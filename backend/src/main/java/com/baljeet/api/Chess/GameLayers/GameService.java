@@ -2,6 +2,8 @@ package com.baljeet.api.Chess.GameLayers;
 
 import com.baljeet.api.Chess.Controllers.ChessRequests;
 import com.baljeet.api.Chess.Controllers.ChessResponses;
+import com.baljeet.api.Chess.Controllers.GameResult;
+import com.baljeet.api.Chess.Core.Board;
 import com.baljeet.api.Chess.Core.PrecomputedData;
 import com.baljeet.api.Chess.Engine.EvaluationData;
 import com.baljeet.api.Chess.Engine.OpeningDatabase;
@@ -47,10 +49,6 @@ public class GameService {
                 .map(game -> (game.makeEngineMove(request.timeLeft, request.increment)));
     }
 
-    public void deleteGame(String gameID) {
-        gameRepository.deleteGame(gameID);
-    }
-
     public Optional<ChessResponses.GameInfo> getGameInfo(String gameID){
         return gameRepository.findById(gameID)
                 .map(Game::getGameInfo);
@@ -66,11 +64,15 @@ public class GameService {
                  return game.getGameState();
                 });
     }
-    public Optional<ChessResponses.gameState> checkTimeout(String gameID){
+    public Optional<Boolean> deleteGame(String gameID){
         return gameRepository.findById(gameID)
                 .map(game->{
-                    game.updatePlayerTimes(false);
-                    return game.getGameState();
+                   var state = game.getGameState();
+                   if (state.result != GameResult.NO_RESULT) {
+                       gameRepository.deleteGame(gameID);
+                       return true;
+                   }
+                   return false;
                 });
     }
 }

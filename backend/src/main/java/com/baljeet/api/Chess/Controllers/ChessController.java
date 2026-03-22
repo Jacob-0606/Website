@@ -62,11 +62,13 @@ public class ChessController {
                 .orElse(ResponseEntity.badRequest().build());
     }
     @DeleteMapping("/{gameID}/deleteGame")
-    public ResponseEntity<Void> deleteGame(
+    public ResponseEntity<Boolean> deleteGame(
             @PathVariable String gameID
     ){
-        gameService.deleteGame(gameID);
-        return ResponseEntity.ok().build();
+    return gameService.deleteGame(gameID)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.badRequest().build());
+
     }
 
 }

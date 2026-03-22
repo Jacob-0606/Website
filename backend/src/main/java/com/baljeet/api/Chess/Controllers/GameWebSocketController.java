@@ -37,7 +37,7 @@ public class GameWebSocketController {
     @SendTo("/topic/{gameID}")
     public ChessResponses.gameState checkTimeout(
             @DestinationVariable String gameID) {
-        return gameService.checkTimeout(gameID)
+        return gameService.getGameState(gameID)
                 .orElseThrow(() -> new IllegalArgumentException("Problem"));
     }
     
