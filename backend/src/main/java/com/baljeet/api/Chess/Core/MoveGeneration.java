@@ -312,8 +312,8 @@ public class MoveGeneration {
         int castlingBits = board.castlingRights >> (white ? 0 : 2);
 
         if ((castlingBits & 1) != 0 && !check) {
-            int kTarget = (int) PrecomputedData.kingCastlingPositions[white ? 0 : 2];
-            int rTarget = (int) PrecomputedData.rookCastlingPositions[white ? 0 : 2];
+            int kTarget = PrecomputedData.kingCastlingPositions[white ? 0 : 2];
+            int rTarget = PrecomputedData.rookCastlingPositions[white ? 0 : 2];
             int rStart = board.castlingFiles[white ? 0 : 2] + sideOffset;
 
             
@@ -333,8 +333,8 @@ public class MoveGeneration {
         }
 
         if ((castlingBits & 2) != 0 && !check) {
-            int kTarget = (int) PrecomputedData.kingCastlingPositions[white ? 1 : 3];
-            int rTarget = (int) PrecomputedData.rookCastlingPositions[white ? 1 : 3];
+            int kTarget = PrecomputedData.kingCastlingPositions[white ? 1 : 3];
+            int rTarget = PrecomputedData.rookCastlingPositions[white ? 1 : 3];
             int rStart = board.castlingFiles[white ? 1 : 3] + sideOffset;
 
             long blockers = PrecomputedData.rayBetween[positionFriendlyKing][kTarget] | (1L << kTarget) |

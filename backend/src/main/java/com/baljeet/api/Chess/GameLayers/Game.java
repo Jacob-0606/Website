@@ -21,6 +21,7 @@ public class Game {
     public final String gameID;
     private final GameMode mode;
     private final GameVariation variation;
+    private final int blackOffset = 56;
 
     public Game(ChessRequests.StartGame request){
         variation = request.variation;
@@ -54,6 +55,9 @@ public class Game {
         MoveList moveList = moveGeneration.getAllMoves(false);
         ArrayList<Integer> list = new ArrayList<>();
 
+        if(board.chess960)
+            map960CastleMoves(moveList);
+
         for (int i = 0; i < moveList.size(); i++) {
             if (MoveList.getFrom(moveList.get(i)) == square) {
                 list.add(moveList.get(i));
@@ -69,6 +73,8 @@ public class Game {
 
         var moves = moveGeneration.getAllMoves(false);
         int move = request.move;
+        if(board.chess960)
+            move = map960CastleMoveBack(move);
         int count = 0;
         for (int i = 0; i < moves.size(); i++) {
             if (moves.get(i) == move)
@@ -77,7 +83,7 @@ public class Game {
         if(count == 0)
             return null;
 
-        board.makeMove(request.move);
+        board.makeMove(move);
         return getGameState();
     }
     public ChessResponses.gameState makeEngineMove(long timeLeft,long increment){
@@ -89,6 +95,7 @@ public class Game {
     public ChessResponses.gameState getGameState(){
         MoveList moveList = moveGeneration.getAllMoves(false);
         var state = new ChessResponses.gameState();
+        state.fen = board.toString();
 
         if (moveList.isEmpty()) {
             if (moveGeneration.check)
@@ -96,16 +103,18 @@ public class Game {
             else
                 state.draw = true;
         }
-        if (moveGeneration.check)
-            state.check = true;
-        state.fen = board.toString();
-        if(isRepetition(board.zobristHash) || board.halfMoveClock >= 100)
-            state.draw = true;
-
+        else {
+            if (moveGeneration.check)
+                state.check = true;
+            if (isRepetition(board.zobristHash) || board.halfMoveClock >= 100)
+                state.draw = true;
+        }
         Player whitePlayer = player1.white ?
                 player1 : player2;
         Player blackPlayer = player1.white ?
                 player2 : player1;
+
+        updatePlayerTimes(false);
         state.whiteTime = whitePlayer.timeLeft;
         state.blackTime = blackPlayer.timeLeft;
 
@@ -115,6 +124,12 @@ public class Game {
             state.result = GameResult.WINNER_BLACK;
         else if(state.checkmate)
             state.result = GameResult.WINNER_WHITE;
+        else if(state.whiteTime <= 0 || state.blackTime <= 0){
+            if(state.whiteTime <= state.blackTime)
+                state.result = GameResult.WINNER_BLACK;
+            else
+                state.result = GameResult.WINNER_WHITE;
+        }
         else
             state.result = GameResult.NO_RESULT;
 
@@ -153,6 +168,32 @@ public class Game {
     public void setActive(){
         active = true;
         lastTime = System.currentTimeMillis();
+    }
+    private void map960CastleMoves(MoveList moveList){
+        for(int i = 0; i < moveList.size(); i++){
+            int move = moveList.get(i);
+            int from = MoveList.getFrom(move);
+            int flag = MoveList.getFlag(move);
+            if(flag == Piece.KING_CASTLE || flag == Piece.QUEEN_CASTLE){
+                int newTo = ((flag == Piece.KING_CASTLE) ?
+                        board.castlingFiles[0] : board.castlingFiles[1]) +
+                        (board.whiteToMove ? 0 : blackOffset);
+                int newMove = MoveList.packMove(from, newTo, flag);
+                moveList.set(i, newMove);
+            }
+        }
+    }
+    private int map960CastleMoveBack(int move){
+        int flag = MoveList.getFlag(move);
+        if(flag != Piece.KING_CASTLE && flag != Piece.QUEEN_CASTLE)
+            return move;
+
+        int from = MoveList.getFrom(move);
+        int newTo = ((flag == Piece.KING_CASTLE) ?
+                PrecomputedData.kingCastlingPositions[0] : PrecomputedData.kingCastlingPositions[1]) +
+                (board.whiteToMove ? 0 : blackOffset);
+        return MoveList.packMove(from, newTo, flag);
+
     }
     static class Player {
         public long timeLeft;

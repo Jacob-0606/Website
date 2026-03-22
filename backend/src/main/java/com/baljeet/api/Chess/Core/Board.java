@@ -22,7 +22,7 @@ public class Board {
 
     public Stack<GameState> gameStates;
     public final ArrayList<Long> repetitionTable;
-    private final boolean chess960;
+    public final boolean chess960;
     public int[] castlingFiles = {0, 7, 0, 7};
     private int whiteKingFile = 3;
     private int blackKingFile = 3;
