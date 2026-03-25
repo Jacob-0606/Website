@@ -17,6 +17,7 @@ export const useLocalChess = (uuid, isEngineMode, playerColor
             const newState = await response.json();
             setBoard(fenParser(newState.fen));
             dispatch({type: 'SET_GAME_STATE', payload: newState});
+            dispatch({type: 'SET_LAST_MOVE', payload: newState.lastMove});
             return true;
         } catch (error) {
             console.error("Move failed", error);
@@ -35,6 +36,7 @@ export const useLocalChess = (uuid, isEngineMode, playerColor
                 const newState = await res.json();
                 setBoard(fenParser(newState.fen));
                 dispatch({type: 'SET_GAME_STATE', payload: newState});
+                dispatch({type: 'SET_LAST_MOVE', payload: newState.lastMove});
                 isCalculating.current = false;
             }).catch(() => {
                 isCalculating.current = false;

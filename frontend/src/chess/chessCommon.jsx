@@ -170,6 +170,8 @@ export const gameReducer = (state, action) => {
             return { ...state, joined: action.payload };
         case 'SET_STOP':
             return { ...state, stop: action.payload };
+        case 'SET_LAST_MOVE':
+            return { ...state, lastMove: action.payload };
         default:
             return state;
     }

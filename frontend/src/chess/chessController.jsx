@@ -15,9 +15,10 @@ const ChessGame = ({ initialState, timeControl, gameMode, uuid, playerColor, joi
    const [gameData, dispatch] = useReducer(gameReducer, {
         gameState: initialState,
         joined: gameMode !== ChessMode.ONLINE,
-        stop: ChessResult.NO_RESULT
+        stop: ChessResult.NO_RESULT,
+        lastMove: -1
         });
-    const { gameState, joined, stop } = gameData;
+    const { gameState, joined, stop, lastMove } = gameData;
 
     const { timeState, timeDispatch
      } = useChessTimer(timeControl, gameData, dispatch, isOnline);
@@ -73,6 +74,7 @@ const ChessGame = ({ initialState, timeControl, gameMode, uuid, playerColor, joi
                 board={game.board}
                 onMove={(move) => game.doMove(move, { black: counterBlack, white: counterWhite })}
                 rotation={rotation}
+                lastMove={lastMove}
             />
         </div>
             {stop !== ChessResult.NO_RESULT && 

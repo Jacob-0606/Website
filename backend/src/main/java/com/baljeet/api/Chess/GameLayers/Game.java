@@ -5,6 +5,7 @@ import com.baljeet.api.Chess.Core.*;
 import com.baljeet.api.Chess.Engine.*;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class Game {
@@ -17,11 +18,13 @@ public class Game {
     private final Player player2;
     private final long increment;
     private long lastTime;
+    int lastMove = -1;
 
     public final String gameID;
     private final GameMode mode;
     private final GameVariation variation;
     private final int blackOffset = 56;
+    private final ReentrantLock lock = new ReentrantLock();
 
     public Game(ChessRequests.StartGame request){
         variation = request.variation;
@@ -51,6 +54,7 @@ public class Game {
         return startResponse;
     }
     public ChessResponses.getMovesResponse getMoves(int square){
+        lock.lock();
         ChessResponses.getMovesResponse response = new ChessResponses.getMovesResponse();
         MoveList moveList = moveGeneration.getAllMoves(false);
         ArrayList<Integer> list = new ArrayList<>();
@@ -64,9 +68,11 @@ public class Game {
             }
         }
         response.moves = list;
+        lock.unlock();
         return response;
     }
     public ChessResponses.gameState makeMove(ChessRequests.makeMove request){
+        lock.lock();
         if(!active)
             return null;
         updatePlayerTimes(true);
@@ -84,15 +90,20 @@ public class Game {
             return null;
 
         board.makeMove(move);
+        lastMove = move;
+        lock.unlock();
         return getGameState();
     }
     public ChessResponses.gameState makeEngineMove(long timeLeft,long increment){
+        lock.lock();
         int move = engine.getBestMove(timeLeft,increment);
         ChessRequests.makeMove request = new ChessRequests.makeMove();
         request.move = move;
+        lock.unlock();
         return makeMove(request);
     }
     public ChessResponses.gameState getGameState(){
+        lock.lock();
         MoveList moveList = moveGeneration.getAllMoves(false);
         var state = new ChessResponses.gameState();
         state.fen = board.toString();
@@ -132,7 +143,9 @@ public class Game {
         }
         else
             state.result = GameResult.NO_RESULT;
-
+		
+		state.lastMove = lastMove;
+        lock.unlock();
         return state;
     }
     private boolean isRepetition(long currentKey){

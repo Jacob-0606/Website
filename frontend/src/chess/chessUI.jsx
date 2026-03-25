@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getPieceSvg, useSquareInteractions } from "./chessCommon.jsx";
 
 const Square = React.memo(({ index, piece, isLightSquare, isSelected, isTarget,
-                             onSelect, onDragStart, onDrop, rotationDeg }) => {
+                             onSelect, onDragStart, onDrop, rotationDeg, isLastMove }) => {
     const isCapture = isTarget && !!piece;
     const pieceSvg = getPieceSvg(piece);
     let squareColor =  isLightSquare ?
@@ -12,7 +12,8 @@ const Square = React.memo(({ index, piece, isLightSquare, isSelected, isTarget,
     else if (isCapture) 
         squareColor = 'bg-rose-500';
 
-
+    if(isLastMove)
+        squareColor = 'bg-orange-300';
     return (
         <div 
             className={`flex items-center justify-center rounded-md ${squareColor} relative aspect-square`}
@@ -37,7 +38,7 @@ const Square = React.memo(({ index, piece, isLightSquare, isSelected, isTarget,
     );
 });
 
-export const ChessBoardUI = ({ board, uuid, onMove, rotation }) => {
+export const ChessBoardUI = ({ board, uuid, onMove, rotation, lastMove }) => {
     const { selectedSquare, moves, handleSquareClick } = useSquareInteractions(uuid, board, onMove);
 
     const rotationDeg = useMemo(() => {
@@ -45,6 +46,15 @@ export const ChessBoardUI = ({ board, uuid, onMove, rotation }) => {
     }, [rotation]);
 
     const targets = useMemo(() => moves.map(m => (m >> 6) & 0x3F), [moves]);
+    
+    const lastTo = useMemo(() => {
+        if(lastMove === -1)
+            return -1;
+        return (lastMove & 0xfc0) >> 6} ,[lastMove]);
+    const lastFrom = useMemo(() => {
+        if(lastMove === -1)
+            return -1;
+        return lastMove & 0x3f} ,[lastMove]);
 
     const handleDragStart = (index) => {
         if (selectedSquare !== index) {
@@ -78,6 +88,7 @@ export const ChessBoardUI = ({ board, uuid, onMove, rotation }) => {
                             onDragStart={handleDragStart}
                             onDrop={handleDrop}
                             rotationDeg={rotationDeg}
+                            isLastMove={(flippedIndex === lastTo) || (flippedIndex === lastFrom)}
                         />
                     );
                 })}

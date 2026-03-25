@@ -20,6 +20,7 @@ export const useOnlineChess = (uuid, joinWithID, playerColor, gameData, dispatch
                     const body = JSON.parse(response.body);
                     dispatch({type: 'SET_GAME_STATE', payload: body});
                     setBoard(fenParser(body.fen));
+                    dispatch({type: 'SET_LAST_MOVE', payload: body.lastMove});
                     dispatch({type: 'SET_JOINED', payload: true});
                     timeDispatch({type: 'SYNC_TIMERS',
                          payload: {black: body.blackTime / 10, white: body.whiteTime / 10}});

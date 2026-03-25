@@ -21,6 +21,7 @@ public class ChessResponses {
         public boolean check;
         public boolean checkmate;
         public boolean draw;
+        public int lastMove;
 
         public long blackTime;
         public long whiteTime;
