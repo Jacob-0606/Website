@@ -168,6 +168,10 @@ public class Game {
         return joinResponse;
     }
     public void updatePlayerTimes(boolean applyInc){
+        if (!active) {
+            lastTime = System.currentTimeMillis();
+            return;
+        }
         Player currPlayer = (board.whiteToMove == player1.white)
                 ? player1 : player2;
 
@@ -179,6 +183,7 @@ public class Game {
         lastTime = currTime;
     }
     public void setActive(){
+        if(active) return;
         active = true;
         lastTime = System.currentTimeMillis();
     }

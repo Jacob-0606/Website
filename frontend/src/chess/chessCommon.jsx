@@ -128,6 +128,7 @@ export const useChessTimer = (timeControl, gameData, dispatch, isOnline) => {
             isFirstRender.current = false;
             return;
         }
+        if (isOnline) return;
         const turn = isWhite(gameState);
         if (turn) timeDispatch({type: 'ADD_BONUS_BLACK', payload: bonusTimeCenti});
         else timeDispatch({type: 'ADD_BONUS_WHITE', payload: bonusTimeCenti});
@@ -145,6 +146,37 @@ export const isWhite = (state) => {
 }
 export const currentTurn = (state) => {
     return state.fen.split(" ")[1];
+}
+const sounds = {
+  move: new Audio('/chess_sounds/move-self.mp3'),
+  capture: new Audio('/chess_sounds/capture.mp3'),
+  check: new Audio('/chess_sounds/move-check.mp3'),
+};
+const getFlag = (move) => {return (move & 0xf000) >> 12;}
+
+const playChessSound = (move, check) => {
+  if(move === -1) return;
+  const flag = getFlag(move);
+  let audio;
+  
+  if (flag === 10) {
+    audio = sounds.capture;
+  } else {
+    audio = sounds.move;
+  }
+  if(check)
+    audio = sounds.check;
+
+  if (audio) {
+    audio.currentTime = 0;
+    audio.play();
+  }
+};
+export const updateStatesAfterMove = (dispatch, setBoard, gameState) => {
+    setBoard(fenParser(gameState.fen));
+    dispatch({type: 'SET_GAME_STATE', payload: gameState});
+    dispatch({type: 'SET_LAST_MOVE', payload: gameState.lastMove});
+    playChessSound(gameState.lastMove, gameState.check);
 }
 
 export const ChessMode = Object.freeze({

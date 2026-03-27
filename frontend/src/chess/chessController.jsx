@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useReducer } from 'react';
 import { useLocalChess } from './chessEngine.jsx';
 import { useOnlineChess } from './chessOnline.jsx';
-import {TimerCard, ChessBoardUI, GameOverModal, EmbedLink} from './chessUI.jsx';
+import {TimerCard, ChessBoardUI, GameOverModal, EmbedLink, MoveHistory, RotationMode} from './chessUI.jsx';
 import { useChessTimer, isWhite, ChessMode, gameReducer, ChessResult } from './chessCommon.jsx';
 
 const ChessGame = ({ initialState, timeControl, gameMode, uuid, playerColor, joinWithID }) => {
@@ -68,7 +68,7 @@ const ChessGame = ({ initialState, timeControl, gameMode, uuid, playerColor, joi
                            />
                            </div>)}
             </div>
-            
+            <div className="flex flex-row items-center gap-4">
             <ChessBoardUI
                 uuid={uuid} 
                 board={game.board}
@@ -76,6 +76,16 @@ const ChessGame = ({ initialState, timeControl, gameMode, uuid, playerColor, joi
                 rotation={rotation}
                 lastMove={lastMove}
             />
+            <div className="flex flex-col items-center gap-4">
+            <MoveHistory
+                    lastMove={lastMove}
+            />
+            <RotationMode
+                rotationMode={rotationMode}
+                setRotationMode={setRotationMode}
+            />    
+            </div>
+            </div>
         </div>
             {stop !== ChessResult.NO_RESULT && 
             <div className = "absolute inset-0 bg-opacity-50 flex items-center justify-center z-10">

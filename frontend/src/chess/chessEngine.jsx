@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { makeMove, engineMakeMove } from "./chessAPI.js";
-import { fenParser, currentTurn } from "./chessCommon.jsx";
+import { fenParser, currentTurn, updateStatesAfterMove } from "./chessCommon.jsx";
 
 export const useLocalChess = (uuid, isEngineMode, playerColor
                             , bonusTime, gameData, dispatch, timeData, timeDispatch
@@ -15,9 +15,7 @@ export const useLocalChess = (uuid, isEngineMode, playerColor
         try {
             const response = await makeMove(move, uuid);
             const newState = await response.json();
-            setBoard(fenParser(newState.fen));
-            dispatch({type: 'SET_GAME_STATE', payload: newState});
-            dispatch({type: 'SET_LAST_MOVE', payload: newState.lastMove});
+            updateStatesAfterMove(dispatch, setBoard, newState);
             return true;
         } catch (error) {
             console.error("Move failed", error);
@@ -34,9 +32,7 @@ export const useLocalChess = (uuid, isEngineMode, playerColor
             const time = engineColor === "w" ? counterWhite : counterBlack;
             engineMakeMove(time * 10, bonusTime * 1000, uuid).then(async (res) => {
                 const newState = await res.json();
-                setBoard(fenParser(newState.fen));
-                dispatch({type: 'SET_GAME_STATE', payload: newState});
-                dispatch({type: 'SET_LAST_MOVE', payload: newState.lastMove});
+                updateStatesAfterMove(dispatch, setBoard, newState);
                 isCalculating.current = false;
             }).catch(() => {
                 isCalculating.current = false;

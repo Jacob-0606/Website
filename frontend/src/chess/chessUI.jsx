@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { getPieceSvg, useSquareInteractions } from "./chessCommon.jsx";
 
 const Square = React.memo(({ index, piece, isLightSquare, isSelected, isTarget,
@@ -11,9 +11,8 @@ const Square = React.memo(({ index, piece, isLightSquare, isSelected, isTarget,
         squareColor = 'bg-emerald-400';
     else if (isCapture) 
         squareColor = 'bg-rose-500';
-
-    if(isLastMove)
-        squareColor = 'bg-orange-300';
+    else if(isLastMove)
+        squareColor = 'bg-cyan-500/30';
     return (
         <div 
             className={`flex items-center justify-center rounded-md ${squareColor} relative aspect-square`}
@@ -66,7 +65,7 @@ export const ChessBoardUI = ({ board, uuid, onMove, rotation, lastMove }) => {
     };
 
     return (
-        <div className="bg-gray-800 shadow-2xl rounded-lg overflow-hidden w-full max-w-lg aspect-square mx-auto">
+        <div className="bg-gray-800 shadow-2xl rounded-lg overflow-hidden w-full max-w-lg aspect-square mx-auto max-h-[calc(100vh-120px)]">
             <div 
                 className="grid grid-cols-8 grid-rows-8 w-full h-full"
                 style={{ transform: `rotate(${rotationDeg}deg)` }}
@@ -169,3 +168,98 @@ export const GameOverModal = ({ message }) => (
         </button>
     </div>
 );
+const getFrom = (move) => { return move & 0x3f;}
+const getTo = (move) => {return (move & 0xfc0) >> 6;}
+const indexToSquare = (index) => {
+    const rank = Math.floor(index / 8);
+    const file = index % 8; 
+    const fileChar = String.fromCharCode('h'.charCodeAt(0) - file);
+    const rankChar = String.fromCharCode('1'.charCodeAt(0) + rank);
+
+    return `${fileChar}${rankChar}`;
+    }
+
+export const MoveHistory = ({lastMove }) => {
+    const scrollRef = useRef(null);
+    const [moves, setMoves] = useState([]);
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+        }, [moves]);
+    
+    useEffect (()=> {
+        const from = indexToSquare(getFrom(lastMove));
+        const to = indexToSquare(getTo(lastMove));
+        if (from === to) return;
+        setMoves(prev => [...prev, `${from}${to}`]);
+
+    }, [lastMove]);
+    return (
+        <div className="w-50 flex flex-col bg-slate-900 rounded-xl overflow-hidden border border-slate-700 shadow-2xl">
+        <div className="px-4 py-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+        <h3 className="text-slate-100 font-bold tracking-wide uppercase text-xs">Move History</h3>
+        </div>
+
+        <div 
+        ref={scrollRef}
+        className="h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
+        >
+        <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-slate-900 text-slate-500 text-[10px] uppercase">
+            <tr>
+                <th className="px-4 py-2 font-medium w-12 text-center">#</th>
+                <th className="px-4 py-2 font-medium">White</th>
+                <th className="px-4 py-2 font-medium">Black</th>
+            </tr>
+            </thead>
+            <tbody className="text-sm font-mono text-slate-300">
+            {Array.from({ length: Math.ceil(moves.length / 2) }).map((_, i) => (
+                <tr 
+                key={i} 
+                className="hover:bg-slate-800/50 transition-colors border-b border-slate-800/50"
+                >
+                <td className="px-4 py-2 text-slate-500 text-center bg-slate-800/30">
+                    {i + 1}.
+                </td>
+                <td className="px-4 py-2 font-semibold text-bg-white">
+                    {moves[i * 2]}
+                </td>
+                <td className="px-4 py-2 font-semibold text-gray-500">
+                    {moves[i * 2 + 1] || '--'}
+                </td>
+                </tr>
+            ))}
+            
+            </tbody>
+        </table>
+        </div>
+
+        </div>
+    );
+};
+
+
+export const RotationMode = ({ rotationMode, setRotationMode }) => {
+  
+    
+    return (
+        <div className="p-4 bg-slate-900 rounded-xl border border-slate-700 shadow-lg max-w-md w-full">
+        <label className="block text-[10px] font-bold tracking-wide uppercase text-slate-400 mb-2 ml-1">
+            Board Rotation
+        </label>
+
+        <select
+            value={rotationMode}
+            onChange={(e) => setRotationMode(e.target.value)}
+            className="w-full px-4 py-2 bg-slate-800 text-slate-200 border border-slate-600 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition cursor-pointer hover:bg-slate-750 appearance-none"
+        >
+            <option value="rotate">Rotate Board</option>
+            <option value="fixed">Fixed Board</option>
+
+        </select>
+        
+        </div>
+    );
+};
+

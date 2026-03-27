@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef} from 'react';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
-import { fenParser, currentTurn, ChessResult} from "./chessCommon.jsx";
+import { fenParser, currentTurn, ChessResult, updateStatesAfterMove} from "./chessCommon.jsx";
 
 export const useOnlineChess = (uuid, joinWithID, playerColor, gameData, dispatch
                             , timeState, timeDispatch
@@ -18,10 +18,9 @@ export const useOnlineChess = (uuid, joinWithID, playerColor, gameData, dispatch
             onConnect: () => {
                 stompClient.subscribe(`/topic/${uuid}`, (response) => {
                     const body = JSON.parse(response.body);
-                    dispatch({type: 'SET_GAME_STATE', payload: body});
-                    setBoard(fenParser(body.fen));
-                    dispatch({type: 'SET_LAST_MOVE', payload: body.lastMove});
+                    updateStatesAfterMove(dispatch, setBoard, body);
                     dispatch({type: 'SET_JOINED', payload: true});
+                    console.log(body);
                     timeDispatch({type: 'SYNC_TIMERS',
                          payload: {black: body.blackTime / 10, white: body.whiteTime / 10}});
                     console.log("Received update", body);
