@@ -37,14 +37,12 @@ public class Evaluation {
         whiteScore += getBlendedPSTScore(white[Piece.KING], phase, EvaluationData.W_KING_PST_MIDDLE, EvaluationData.W_KING_PST_END);
         blackScore += getBlendedPSTScore(black[Piece.KING], phase, EvaluationData.B_KING_PST_MIDDLE, EvaluationData.B_KING_PST_END);
 
-        // If winning, move king closer to opponent king
-        // Sometimes getting out of bounds exception bug not easily reproducible
-        /*if (whiteScore - blackScore > 0){
+        if (whiteScore - blackScore > 0){
             whiteScore += (15 - EvaluationData.Manhattan[Long.numberOfTrailingZeros(white[Piece.KING])][Long.numberOfTrailingZeros(black[Piece.KING])]) * phase;
         }
         else{
             blackScore += (15 - EvaluationData.Manhattan[Long.numberOfTrailingZeros(white[Piece.KING])][Long.numberOfTrailingZeros(black[Piece.KING])]) * phase;
-        }*/
+        }
 
         whiteScore += evaluatePawnStructure(white[Piece.PAWN]);
         blackScore += evaluatePawnStructure(black[Piece.PAWN]);

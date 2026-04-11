@@ -27,6 +27,7 @@ public class Search {
     public int eval;
     private TranspositionTable.TTEntry entry;
     private final ArrayList<Long> gameHistory;
+    private final MoveOrdering moveOrdering;
     private static final Logger logger = LoggerFactory.getLogger(Search.class);
 
     private int[][] killerMoves;
@@ -34,10 +35,11 @@ public class Search {
     TranspositionTable tt;
     // Must use power of two
     private final int tableSize = 1 << 19;
-    private static final byte EXACT = 0;
+    public static final byte EXACT = 0;
     private static final byte LOWER_BOUND = 1;
     private static final byte UPPER_BOUND = 2;
     private static final int maxSearchExtensions = 2;
+    private int generation = 0;
 
     public Search(Board board, MoveGeneration moveGeneration) {
         this.board = board;
@@ -45,6 +47,7 @@ public class Search {
         this.gameHistory = board.repetitionTable;
         evaluation = new Evaluation(board);
         tt = new TranspositionTable(tableSize);
+        moveOrdering = new MoveOrdering(board, evaluation, tt);
     }
 
     public int iterativeDeepening(long time, long increment) {
@@ -70,6 +73,7 @@ public class Search {
         for (int i = 1; i < 20; i++) {
             searchDepth = i;
             killerMoves = new int[i + 1 + maxSearchExtensions][2];
+            moveOrdering.killerMoves = killerMoves;
             int evalIteration = negaMax(Integer.MIN_VALUE / 2, Integer.MAX_VALUE / 2, searchDepth, 0, 0);
             if (searchCancelled) break;
             else {
@@ -82,7 +86,7 @@ public class Search {
                 mateFound = true;
                 break;
             }
-
+            generation++;
 
         }
         logger.debug("Mate Found: {}", mateFound);
@@ -116,17 +120,16 @@ public class Search {
         MoveList moveList = moveGeneration.getAllMoves(false);
         if (moveList.isEmpty()) {
             if (moveGeneration.check) {
-                return -100000 + 100 * (searchDepth - depth); // checkmate
+                return -100000 + plyFromRoot; // checkmate
             } else {
                 return 0; // stalemate
             }
         }
 
         // Static evaluation
-        if (depth == 0) return quiescenceSearch(alpha, beta);
-        // if (depth == 0) return evaluation.evaluate();
+        if (depth == 0) return quiescenceSearch(alpha, beta, plyFromRoot);
         int max = Integer.MIN_VALUE / 2;
-        sortMoves(moveList, depth, plyFromRoot);
+        moveOrdering.orderMoves(moveList, plyFromRoot, optimalMove, false);
 
         int initialAlpha = alpha;
         int bestMove = 0;
@@ -142,7 +145,7 @@ public class Search {
                 if(searchExtensions < maxSearchExtensions){
                     if (board.isInCheck()) extensions = 1;
                 }
-                score = -negaMax(-beta, -alpha, depth - 1 + extensions, searchExtensions + extensions, plyFromRoot +1);
+                score = -negaMax(-beta, -alpha, depth - 1 + extensions, searchExtensions + extensions, plyFromRoot + 1);
             }
             board.undoMove(move);
             if (score > max) {
@@ -170,7 +173,8 @@ public class Search {
         } else {
             bound = EXACT;
         }
-        if (!searchCancelled) tt.store(board.zobristHash, bestMove, max, searchDepth - plyFromRoot, bound, board.fullMoveNumber);
+        if (!searchCancelled)
+            tt.store(board.zobristHash, bestMove, max, searchDepth - plyFromRoot, bound, generation);
         return max;
     }
 
@@ -181,81 +185,10 @@ public class Search {
 
         long timeForMove = base + increment / 2;
 
-        //Never use more than 10 seconds
+        // Never use more than 10 seconds
         return Math.min(timeForMove, 10000);
     }
 
-    // Move ordering
-    private void sortMoves(MoveList moveList, int depth, int plyFromRoot) {
-        // First: PV-Move from prev iteration
-        // Second: Move from Transposition Table
-        // Third: Captures
-        // Fourth: Normal Moves
-        int[] scores = new int[moveList.size()];
-        entry = tt.lookup(board.zobristHash);
-        
-        for (int i = 0; i < moveList.size(); i++) {
-            int move = moveList.get(i);
-            int score = getScore(depth, move, plyFromRoot);
-            scores[i] = score;
-
-        }
-        for (int i = 0; i < moveList.size() - 1; i++) {
-            int maxIndex = i;
-
-            for (int j = i + 1; j < moveList.size(); j++) {
-                if (scores[j] > scores[maxIndex]) {
-                    maxIndex = j;
-                }
-            }
-            int tempScore = scores[i];
-            scores[i] = scores[maxIndex];
-            scores[maxIndex] = tempScore;
-
-            int tempMove = moveList.get(i);
-            moveList.set(i, moveList.get(maxIndex));
-            moveList.set(maxIndex, tempMove);
-        }
-
-    }
-
-    private int getScore(int depth, int move, int plyFromRoot) {
-        int to = MoveList.getTo(move);
-        int from = MoveList.getFrom(move);
-        int score = 0;
-        int[] PST;
-        int phase = evaluation.getPhase();
-
-        switch(board.currentPosition[from]){
-            case Piece.PAWN -> {
-                 PST = board.whiteToMove ? EvaluationData.W_PAWN_PST:EvaluationData.B_PAWN_PST;
-                 score += PST[to]- PST[from];
-            }
-            case Piece.KNIGHT -> score+= EvaluationData.KNIGHT_PST[to] - EvaluationData.KNIGHT_PST[from];
-            case Piece.BISHOP -> {
-                PST = board.whiteToMove ? EvaluationData.W_BISHOP : EvaluationData.B_BISHOP;
-                score += PST[to] - PST[from];
-            }
-            case Piece.KING ->
-                score += board.whiteToMove ?
-                          evaluation.getBlendedPSTScore(1L << to, phase, EvaluationData.W_KING_PST_MIDDLE, EvaluationData.B_KING_PST_END)
-                        - evaluation.getBlendedPSTScore(1L << from, phase, EvaluationData.W_KING_PST_MIDDLE, EvaluationData.W_KING_PST_END)
-                        : evaluation.getBlendedPSTScore(1L << to, phase, EvaluationData.B_KING_PST_MIDDLE, EvaluationData.B_KING_PST_END)
-                        - evaluation.getBlendedPSTScore(1L << from, phase, EvaluationData.B_KING_PST_MIDDLE, EvaluationData.B_KING_PST_END);
-        }
-        if (depth == searchDepth && move == optimalMove) {
-            score += 10000;
-        } else if (entry != null && entry.bestMove() == move) {
-            score += 9000;
-        } else if (MoveList.getFlag(move) == Piece.CAPTURE) {
-
-            score += EvaluationData.MVVLVA[board.currentPosition[to]][board.currentPosition[from]];
-        }
-        if(move == killerMoves[plyFromRoot][0] || move == killerMoves[plyFromRoot][1]){
-            score += 8000;
-        }
-        return score;
-    }
 
     private boolean checkForRepetition() {
         long currentHash = board.zobristHash;
@@ -275,7 +208,7 @@ public class Search {
         return false;
     }
 
-    private int quiescenceSearch(int alpha, int beta){
+    private int quiescenceSearch(int alpha, int beta, int plyFromRoot){
         if (searchCancelled) return 0;
         quiescenceNodes++;
         // Check every 1024 nodes if time is up
@@ -291,12 +224,12 @@ public class Search {
 
         MoveList moves = moveGeneration.getAllMoves(true);
         if(moves.isEmpty()) return evaluation.evaluate();
-        sortCapturesOnlyMoves(moves);
+        moveOrdering.orderMoves(moves, plyFromRoot, optimalMove, true);
 
         for (int i = 0; i < moves.size(); i++){
             int move = moves.get(i);
             board.makeMove(move);
-            int score = -quiescenceSearch(-beta, -alpha);
+            int score = -quiescenceSearch(-beta, -alpha, plyFromRoot + 1);
             board.undoMove(move);
             if(score > max){
                 max = score;
@@ -307,34 +240,5 @@ public class Search {
             }
         }
         return max;
-    }
-    private void sortCapturesOnlyMoves(MoveList moveList){
-        int[] scores = new int[moveList.size()];
-
-        for (int i = 0; i < moveList.size(); i++) {
-            int move = moveList.get(i);
-            int attacker = board.currentPosition[MoveList.getFrom(move)];
-            int victim =  board.currentPosition[MoveList.getTo(move)];
-
-            int score = EvaluationData.MVVLVA[victim][attacker];
-            scores[i] = score;
-
-        }
-        for (int i = 0; i < moveList.size() - 1; i++) {
-            int maxIndex = i;
-
-            for (int j = i + 1; j < moveList.size(); j++) {
-                if (scores[j] > scores[maxIndex]) {
-                    maxIndex = j;
-                }
-            }
-            int tempScore = scores[i];
-            scores[i] = scores[maxIndex];
-            scores[maxIndex] = tempScore;
-
-            int tempMove = moveList.get(i);
-            moveList.set(i, moveList.get(maxIndex));
-            moveList.set(maxIndex, tempMove);
-        }
     }
 }

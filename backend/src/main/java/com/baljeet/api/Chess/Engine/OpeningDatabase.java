@@ -1,7 +1,6 @@
 package com.baljeet.api.Chess.Engine;
 
 import com.baljeet.api.Chess.Core.Board;
-import com.baljeet.api.Chess.Core.MoveGeneration;
 import com.baljeet.api.Chess.Core.MoveList;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -23,7 +22,7 @@ public class OpeningDatabase {
         try{
             init();
         }
-        catch (IOException e){
+        catch (IOException ignored){
         }
     }
     public static void init() throws IOException {
