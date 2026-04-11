@@ -20,19 +20,31 @@ public class TranspositionTable {
     }
 
     public void store(long zobristKey, int move, int score, int depth, byte bound, int age) {
-        int index = (int) (zobristKey & (tableSize - 1));
+        int index = getTTIndex(zobristKey);
         TTEntry entry = tt[index];
 
         // deeper searches and old ones are overwritten
-        if (entry == null || entry.depth() < depth || Math.abs(entry.age() - age) > 5) {
+        if (bound == Search.EXACT ||
+                entry == null ||
+                entry.zobristKey() != zobristKey ||
+                entry.depth() < depth ||
+                entry.age() - age > 8) {
             tt[index] = new TTEntry(zobristKey, move, depth, score, bound, age);
         }
     }
 
     public TTEntry lookup(long zobristKey) {
-        TTEntry entry = tt[(int) (zobristKey & (tableSize - 1))];
-        if (entry == null) return null;
-        if (entry.zobristKey() == zobristKey) return entry;
+        TTEntry entry = tt[getTTIndex(zobristKey)];
+
+        if (entry == null)
+            return null;
+        else if (entry.zobristKey() == zobristKey)
+            return entry;
+
         return null;
+    }
+
+    private int getTTIndex(long zobristKey){
+        return (int) (zobristKey & (tableSize - 1));
     }
 }
